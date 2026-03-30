@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Café · Diário de Consumo</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0c09;
+    --surface: #1a1410;
+    --surface2: #231c16;
+    --border: #3a2e24;
+    --accent: #c8832a;
+    --accent2: #e8a84e;
+    --text: #f0e6d3;
+    --muted: #8a7664;
+    --danger: #c84a3a;
+    --success: #4a9a6a;
+    --cream: #f5ead8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === NOISE OVERLAY === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes steam {
+    0%   { transform: translateY(0) scaleX(1); opacity: 0.7; }
+    50%  { transform: translateY(-10px) scaleX(1.2); opacity: 0.4; }
+    100% { transform: translateY(-20px) scaleX(0.8); opacity: 0; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  /* === SCREENS === */
+  .screen { display: none; animation: fadeIn 0.4s ease; }
+  .screen.active { display: block; }
+
+  /* === LOGIN === */
+  #login-screen {
+    min-height: 100vh;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+  }
+  #login-screen.active { display: flex; }
+
+  .login-bg {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 60%, #2a1a08 0%, #0f0c09 60%);
+    z-index: -1;
+  }
+
+  .cup-illustration {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 2rem;
+  }
+  .cup-svg { width: 80px; height: 80px; }
+  .steam-path {
+    animation: steam 2s ease-in-out infinite;
+    transform-origin: bottom center;
+  }
+  .steam-path:nth-child(2) { animation-delay: 0.6s; }
+  .steam-path:nth-child(3) { animation-delay: 1.2s; }
+
+  .login-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.8rem;
+    color: var(--cream);
+    letter-spacing: -0.02em;
+    text-align: center;
+    margin-bottom: 0.4rem;
+    animation: fadeUp 0.6s ease both;
+  }
+  .login-subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.5rem;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .field {
+    margin-bottom: 1.2rem;
+  }
+  .field label {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(200,131,42,0.15);
+  }
+  .field select option { background: var(--surface); }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.8rem;
+    border-radius: 12px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #0f0c09;
+    width: 100%;
+  }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,131,42,0.3); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.82rem; border-radius: 8px; }
+
+  .login-toggle {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .login-toggle a { color: var(--accent); cursor: pointer; text-decoration: none; }
+  .login-toggle a:hover { color: var(--accent2); }
+
+  .error-msg {
+    background: rgba(200,74,58,0.15);
+    border: 1px solid rgba(200,74,58,0.3);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    color: #e87a6a;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  /* === APP LAYOUT === */
+  #app-screen {
+    min-height: 100vh;
+    display: none;
+    flex-direction: column;
+  }
+  #app-screen.active { display: flex; }
+
+  /* === HEADER === */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(15,12,9,0.8);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .header-brand span { font-style: italic; }
+  .header-user {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #0f0c09;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+
+  /* === NAV === */
+  .app-nav {
+    display: flex;
+    gap: 0;
+    padding: 0 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+  .nav-tab {
+    padding: 1rem 1.4rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  /* === CONTENT === */
+  .app-content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .tab-content { display: none; animation: fadeUp 0.3s ease; }
+  .tab-content.active { display: block; }
+
+  /* === DASHBOARD === */
+  .dash-greeting {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--cream);
+    margin-bottom: 0.3rem;
+  }
+  .dash-date { color: var(--muted); font-size: 0.85rem; margin-bottom: 2rem; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.4rem;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .stat-card:nth-child(1) { animation-delay: 0.05s; }
+  .stat-card:nth-child(2) { animation-delay: 0.1s; }
+  .stat-card:nth-child(3) { animation-delay: 0.15s; }
+  .stat-card:nth-child(4) { animation-delay: 0.2s; }
+  .stat-icon { font-size: 1.4rem; margin-bottom: 0.8rem; }
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--accent2);
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .recent-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    color: var(--cream);
+    margin-bottom: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  /* === RECORDS LIST === */
+  .record-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.7rem;
+    animation: slideIn 0.3s ease both;
+    transition: border-color 0.2s;
+  }
+  .record-item:hover { border-color: var(--border); background: var(--surface2); }
+  .record-cup {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(200,131,42,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+  .record-info { flex: 1; min-width: 0; }
+  .record-ml { font-weight: 500; color: var(--text); font-size: 0.95rem; }
+  .record-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+  .record-sugar {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .sugar-none { background: rgba(74,154,106,0.15); color: #6aba8a; }
+  .sugar-yes  { background: rgba(200,131,42,0.15); color: var(--accent2); }
+  .sugar-sweetener { background: rgba(100,120,200,0.15); color: #8a9ae8; }
+
+  .record-actions { display: flex; gap: 0.4rem; }
+  .btn-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .btn-icon:hover { background: var(--surface2); color: var(--text); }
+  .btn-icon.delete:hover { background: rgba(200,74,58,0.15); border-color: var(--danger); color: var(--danger); }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+  .empty-text { font-size: 0.9rem; }
+
+  /* === FORM === */
+  .form-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--cream);
+    margin-bottom: 1.8rem;
+  }
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 560px;
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  .sugar-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+  }
+  .sugar-option {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.7rem;
+    text-align: center;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--muted);
+    transition: all 0.2s;
+    background: var(--bg);
+  }
+  .sugar-option:hover { border-color: var(--accent); color: var(--text); }
+  .sugar-option.selected { border-color: var(--accent); background: rgba(200,131,42,0.12); color: var(--accent2); }
+  .sugar-option .opt-icon { font-size: 1.2rem; display: block; margin-bottom: 0.3rem; }
+
+  /* === FILTERS === */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--cream);
+    margin-bottom: 1.5rem;
+  }
+  .filter-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .filter-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+  .filter-row { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: flex-end; }
+  .filter-chip {
+    padding: 0.45rem 1rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: var(--muted);
+    background: var(--bg);
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--text); }
+  .filter-chip.active { background: rgba(200,131,42,0.15); border-color: var(--accent); color: var(--accent2); }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .results-count { font-size: 0.85rem; color: var(--muted); }
+
+  /* === CHARTS (pure CSS) === */
+  .chart-section { margin-bottom: 2rem; }
+  .chart-title { font-size: 0.8rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 0.4rem; height: 80px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; flex: 1; }
+  .bar {
+    width: 100%;
+    background: linear-gradient(to top, var(--accent), var(--accent2));
+    border-radius: 4px 4px 0 0;
+    transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    min-height: 2px;
+    position: relative;
+  }
+  .bar:hover { filter: brightness(1.2); }
+  .bar-label { font-size: 0.65rem; color: var(--muted); }
+
+  .donut-chart-wrap { display: flex; align-items: center; gap: 1.5rem; }
+  .donut-legend { display: flex; flex-direction: column; gap: 0.5rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* === REPORT === */
+  .report-section { margin-bottom: 2rem; }
+  .report-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .report-block-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+  .insight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .insight-row:last-child { border-bottom: none; }
+  .insight-key { font-size: 0.85rem; color: var(--muted); }
+  .insight-val { font-size: 0.9rem; color: var(--text); font-weight: 500; }
+  .insight-val.highlight { color: var(--accent2); font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+
+  .print-btn-row { display: flex; gap: 0.8rem; margin-top: 1.5rem; }
+
+  /* === TOAST === */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 1rem 1.4rem;
+    font-size: 0.88rem;
+    color: var(--text);
+    z-index: 9000;
+    animation: fadeUp 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: 300px;
+  }
+  .toast.hide { animation: fadeIn 0.3s ease reverse forwards; }
+
+  /* === MODAL === */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 480px;
+    animation: fadeUp 0.3s ease;
+  }
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: var(--cream);
+    margin-bottom: 1.5rem;
+  }
+  .modal-actions { display: flex; gap: 0.8rem; margin-top: 1.5rem; justify-content: flex-end; }
+
+  /* === SCROLLBAR === */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 600px) {
+    .app-content { padding: 1rem; }
+    .app-header { padding: 1rem; }
+    .form-row { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .login-title { font-size: 2rem; }
+    .filter-row { flex-direction: column; }
+    .filter-row .field { width: 100%; }
+  }
+
+  /* === PERIOD TAG === */
+  .period-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    border: 1px solid;
+  }
+  .period-manha  { color: #f0c070; border-color: rgba(240,192,112,0.3); background: rgba(240,192,112,0.1); }
+  .period-tarde  { color: #f09050; border-color: rgba(240,144,80,0.3); background: rgba(240,144,80,0.1); }
+  .period-noite  { color: #8090d0; border-color: rgba(128,144,208,0.3); background: rgba(128,144,208,0.1); }
+
+  @media print {
+    .app-header, .app-nav, .print-btn-row, .nav-tab, .btn-ghost { display: none !important; }
+    .app-content { padding: 0; }
+    body { background: white; color: black; }
+    .report-block { border: 1px solid #ccc; background: white; }
+    .section-title, .report-block-title, .insight-key, .insight-val { color: black !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login-screen" class="screen active">
+  <div class="login-bg"></div>
+
+  <!-- Coffee cup SVG with steam -->
+  <div class="cup-illustration">
+    <svg class="cup-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Steam -->
+      <path class="steam-path" d="M28 20 Q30 14 28 8" stroke="#c8832a" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+      <path class="steam-path" d="M40 18 Q42 12 40 6" stroke="#c8832a" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+      <path class="steam-path" d="M52 20 Q54 14 52 8" stroke="#c8832a" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+      <!-- Cup body -->
+      <path d="M16 32 L20 65 Q20 68 24 68 L56 68 Q60 68 60 65 L64 32 Z" fill="#231c16" stroke="#3a2e24" stroke-width="1.5"/>
+      <!-- Rim -->
+      <rect x="14" y="28" width="52" height="6" rx="3" fill="#2a2018" stroke="#3a2e24" stroke-width="1.5"/>
+      <!-- Handle -->
+      <path d="M60 40 Q72 40 72 50 Q72 60 60 60" stroke="#3a2e24" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- Coffee surface -->
+      <ellipse cx="40" cy="31" rx="24" ry="4" fill="#1a0e06" opacity="0.8"/>
+      <!-- Shine -->
+      <ellipse cx="33" cy="30" rx="6" ry="2" fill="#c8832a" opacity="0.2"/>
+    </svg>
+  </div>
+
+  <h1 class="login-title">Café<span> · Diário</span></h1>
+  <p class="login-subtitle">ACOMPANHE SEU CONSUMO DE CAFEÍNA</p>
+
+  <div class="login-card" id="login-card">
+    <div class="error-msg" id="login-error"></div>
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" id="login-user" placeholder="seu nome" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="login-pass" placeholder="••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+    <div class="login-toggle">
+      Sem conta? <a onclick="showRegister()">Criar conta</a>
+    </div>
+  </div>
+
+  <div class="login-card" id="register-card" style="display:none">
+    <div class="error-msg" id="reg-error"></div>
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" id="reg-user" placeholder="escolha um nome">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="reg-pass" placeholder="crie uma senha">
+    </div>
+    <div class="field">
+      <label>Confirmar senha</label>
+      <input type="password" id="reg-pass2" placeholder="repita a senha">
+    </div>
+    <button class="btn btn-primary" onclick="doRegister()">Criar conta</button>
+    <div class="login-toggle">
+      Já tem conta? <a onclick="showLogin()">Entrar</a>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="app-screen" class="screen">
+  <header class="app-header">
+    <div class="header-brand">☕ <span>café · diário</span></div>
+    <div class="header-user">
+      <span id="header-username"></span>
+      <div class="user-avatar" id="header-avatar">?</div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sair</button>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <button class="nav-tab active" onclick="switchTab('dashboard', this)">Resumo</button>
+    <button class="nav-tab" onclick="switchTab('records', this)">Registros</button>
+    <button class="nav-tab" onclick="switchTab('add', this)">+ Adicionar</button>
+    <button class="nav-tab" onclick="switchTab('filter', this)">Filtros</button>
+    <button class="nav-tab" onclick="switchTab('report', this)">Relatório</button>
+  </nav>
+
+  <div class="app-content">
+
+    <!-- ====== DASHBOARD ====== -->
+    <div class="tab-content active" id="tab-dashboard">
+      <h2 class="dash-greeting" id="dash-greeting">Bom dia</h2>
+      <p class="dash-date" id="dash-date"></p>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <!-- Weekly bar chart -->
+      <div class="filter-card chart-section">
+        <div class="chart-title">Consumo nos últimos 7 dias (ml)</div>
+        <div class="bar-chart" id="week-chart"></div>
+      </div>
+
+      <h3 class="recent-title">Registros recentes</h3>
+      <div id="recent-list"></div>
+    </div>
+
+    <!-- ====== RECORDS ====== -->
+    <div class="tab-content" id="tab-records">
+      <h2 class="section-title">Todos os registros</h2>
+      <div id="all-records-list"></div>
+    </div>
+
+    <!-- ====== ADD ====== -->
+    <div class="tab-content" id="tab-add">
+      <h2 class="form-title" id="form-title">Novo registro</h2>
+      <div class="form-card">
+        <input type="hidden" id="edit-id">
+        <div class="field">
+          <label>Quantidade (ml)</label>
+          <input type="number" id="f-ml" placeholder="ex: 200" min="1" max="2000">
+        </div>
+        <div class="field">
+          <label>Açúcar / Adoçante</label>
+          <div class="sugar-options">
+            <div class="sugar-option selected" data-val="sem" onclick="selectSugar(this)">
+              <span class="opt-icon">🌿</span>Sem açúcar
+            </div>
+            <div class="sugar-option" data-val="com" onclick="selectSugar(this)">
+              <span class="opt-icon">🍬</span>Com açúcar
+            </div>
+            <div class="sugar-option" data-val="adocante" onclick="selectSugar(this)">
+              <span class="opt-icon">💊</span>Adoçante
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Data</label>
+            <input type="date" id="f-date">
+          </div>
+          <div class="field">
+            <label>Hora</label>
+            <input type="time" id="f-time">
+          </div>
+        </div>
+        <div class="field">
+          <label>Momento</label>
+          <select id="f-period">
+            <option value="manha">☀️ Manhã</option>
+            <option value="tarde">🌤️ Tarde</option>
+            <option value="noite">🌙 Noite</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Local</label>
+          <input type="text" id="f-local" placeholder="ex: Casa, Trabalho, Cafeteria...">
+        </div>
+        <div class="field">
+          <label>Observação (opcional)</label>
+          <textarea id="f-obs" placeholder="Algum detalhe sobre o café..."></textarea>
+        </div>
+        <div style="display:flex;gap:.8rem;margin-top:.5rem">
+          <button class="btn btn-primary" style="flex:1" onclick="saveRecord()">Salvar</button>
+          <button class="btn btn-ghost" onclick="clearForm()">Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== FILTER ====== -->
+    <div class="tab-content" id="tab-filter">
+      <h2 class="section-title">Filtrar registros</h2>
+      <div class="filter-card">
+        <div class="filter-title">Período</div>
+        <div class="filter-row">
+          <div class="field" style="flex:1;min-width:140px">
+            <label>De</label>
+            <input type="date" id="fil-from">
+          </div>
+          <div class="field" style="flex:1;min-width:140px">
+            <label>Até</label>
+            <input type="date" id="fil-to">
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-card">
+        <div class="filter-title">Tipo</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <div class="filter-chip active" data-filter="sugar" data-val="todos" onclick="toggleChip(this,'sugar')">Todos</div>
+          <div class="filter-chip" data-filter="sugar" data-val="sem" onclick="toggleChip(this,'sugar')">Sem açúcar</div>
+          <div class="filter-chip" data-filter="sugar" data-val="com" onclick="toggleChip(this,'sugar')">Com açúcar</div>
+          <div class="filter-chip" data-filter="sugar" data-val="adocante" onclick="toggleChip(this,'sugar')">Adoçante</div>
+        </div>
+      </div>
+
+      <div class="filter-card">
+        <div class="filter-title">Período do dia</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <div class="filter-chip active" data-filter="period" data-val="todos" onclick="toggleChip(this,'period')">Todos</div>
+          <div class="filter-chip" data-filter="period" data-val="manha" onclick="toggleChip(this,'period')">☀️ Manhã</div>
+          <div class="filter-chip" data-filter="period" data-val="tarde" onclick="toggleChip(this,'period')">🌤️ Tarde</div>
+          <div class="filter-chip" data-filter="period" data-val="noite" onclick="toggleChip(this,'period')">🌙 Noite</div>
+        </div>
+      </div>
+
+      <div class="filter-card">
+        <div class="filter-title">Local</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap" id="local-chips">
+          <div class="filter-chip active" data-filter="local" data-val="todos" onclick="toggleChip(this,'local')">Todos</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.5rem">
+        <button class="btn btn-primary" onclick="applyFilters()">Aplicar filtros</button>
+        <button class="btn btn-ghost" onclick="clearFilters()">Limpar filtros</button>
+      </div>
+
+      <div class="results-header">
+        <h3 class="recent-title" style="margin:0">Resultados</h3>
+        <span class="results-count" id="filter-count"></span>
+      </div>
+      <div id="filter-results"></div>
+    </div>
+
+    <!-- ====== REPORT ====== -->
+    <div class="tab-content" id="tab-report">
+      <h2 class="section-title">Relatório</h2>
+
+      <div class="filter-card" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="flex:1;min-width:130px">
+          <label>De</label>
+          <input type="date" id="rep-from">
+        </div>
+        <div class="field" style="flex:1;min-width:130px">
+          <label>Até</label>
+          <input type="date" id="rep-to">
+        </div>
+        <button class="btn btn-primary" style="margin-bottom:0.05rem" onclick="generateReport()">Gerar</button>
+      </div>
+
+      <div id="report-output"></div>
+    </div>
+
+  </div><!-- /app-content -->
+</div><!-- /app-screen -->
+
+<!-- ==================== MODAL ==================== -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">Excluir registro?</div>
+    <p style="color:var(--muted);font-size:.88rem">Esta ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  STATE & STORAGE
+// ============================================================
+let currentUser = null;
+let deleteTarget = null;
+const filters = { sugar: 'todos', period: 'todos', local: 'todos' };
+
+function getUsers() { try { return JSON.parse(localStorage.getItem('cf_users') || '{}'); } catch { return {}; } }
+function saveUsers(u) { localStorage.setItem('cf_users', JSON.stringify(u)); }
+function getRecords() {
+  if (!currentUser) return [];
+  try { return JSON.parse(localStorage.getItem(`cf_records_${currentUser}`) || '[]'); } catch { return []; }
+}
+function saveRecords(r) { localStorage.setItem(`cf_records_${currentUser}`, JSON.stringify(r)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ============================================================
+//  AUTH
+// ============================================================
+function showRegister() {
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('register-card').style.display = 'block';
+}
+function showLogin() {
+  document.getElementById('register-card').style.display = 'none';
+  document.getElementById('login-card').style.display = 'block';
+}
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-error');
+  if (!user || !pass) { showErr(err, 'Preencha todos os campos.'); return; }
+  const users = getUsers();
+  if (!users[user] || users[user].pass !== btoa(pass)) { showErr(err, 'Usuário ou senha incorretos.'); return; }
+  err.style.display = 'none';
+  currentUser = user;
+  sessionStorage.setItem('cf_user', user);
+  enterApp();
+}
+function doRegister() {
+  const user  = document.getElementById('reg-user').value.trim().toLowerCase();
+  const pass  = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  const err   = document.getElementById('reg-error');
+  if (!user || !pass) { showErr(err, 'Preencha todos os campos.'); return; }
+  if (pass !== pass2) { showErr(err, 'As senhas não coincidem.'); return; }
+  if (pass.length < 4) { showErr(err, 'Senha deve ter ao menos 4 caracteres.'); return; }
+  const users = getUsers();
+  if (users[user]) { showErr(err, 'Este usuário já existe.'); return; }
+  users[user] = { pass: btoa(pass) };
+  saveUsers(users);
+  err.style.display = 'none';
+  currentUser = user;
+  sessionStorage.setItem('cf_user', user);
+  enterApp();
+}
+function doLogout() {
+  currentUser = null;
+  sessionStorage.removeItem('cf_user');
+  document.getElementById('app-screen').classList.remove('active');
+  document.getElementById('login-screen').classList.add('active');
+}
+function enterApp() {
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('app-screen').classList.add('active');
+  document.getElementById('header-username').textContent = currentUser;
+  document.getElementById('header-avatar').textContent = currentUser[0].toUpperCase();
+  initDashboard();
+  populateLocalChips();
+  setDefaultDates();
+}
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+// Auto-login from session
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('cf_user');
+  const users = getUsers();
+  if (saved && users[saved]) { currentUser = saved; enterApp(); }
+  setDefaultFormDates();
+
+  // Enter key on login
+  ['login-pass','reg-pass2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') { id==='login-pass' ? doLogin() : doRegister(); } });
+  });
+});
+
+// ============================================================
+//  TABS
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'dashboard') initDashboard();
+  if (name === 'records') renderAllRecords();
+  if (name === 'filter') { populateLocalChips(); }
+  if (name === 'report') setDefaultDates();
+}
+
+// ============================================================
+//  FORM
+// ============================================================
+function setDefaultFormDates() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const el = document.getElementById('f-date');
+  if (el) { el.value = dateStr; }
+  const tel = document.getElementById('f-time');
+  if (tel) tel.value = timeStr;
+  // auto period
+  const h = now.getHours();
+  const pEl = document.getElementById('f-period');
+  if (pEl) pEl.value = h < 12 ? 'manha' : h < 18 ? 'tarde' : 'noite';
+}
+
+function selectSugar(el) {
+  document.querySelectorAll('.sugar-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function clearForm() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('form-title').textContent = 'Novo registro';
+  document.getElementById('f-ml').value = '';
+  document.getElementById('f-local').value = '';
+  document.getElementById('f-obs').value = '';
+  document.querySelectorAll('.sugar-option').forEach((o,i) => o.classList.toggle('selected', i===0));
+  setDefaultFormDates();
+}
+
+function saveRecord() {
+  const ml   = parseInt(document.getElementById('f-ml').value);
+  const date = document.getElementById('f-date').value;
+  const time = document.getElementById('f-time').value;
+  const period = document.getElementById('f-period').value;
+  const local  = document.getElementById('f-local').value.trim();
+  const obs    = document.getElementById('f-obs').value.trim();
+  const sugarEl = document.querySelector('.sugar-option.selected');
+  const sugar = sugarEl ? sugarEl.dataset.val : 'sem';
+
+  if (!ml || ml < 1) { showToast('❗ Informe a quantidade em ml.'); return; }
+  if (!date) { showToast('❗ Informe a data.'); return; }
+  if (!local) { showToast('❗ Informe o local.'); return; }
+
+  const records = getRecords();
+  const editId = document.getElementById('edit-id').value;
+
+  if (editId) {
+    const idx = records.findIndex(r => r.id === editId);
+    if (idx !== -1) {
+      records[idx] = { ...records[idx], ml, date, time, period, local, obs, sugar };
+      saveRecords(records);
+      showToast('✅ Registro atualizado!');
+    }
+  } else {
+    records.push({ id: uid(), ml, date, time, period, local, obs, sugar });
+    saveRecords(records);
+    showToast('✅ Registro salvo!');
+  }
+
+  clearForm();
+  populateLocalChips();
+}
+
+function editRecord(id) {
+  const records = getRecords();
+  const r = records.find(r => r.id === id);
+  if (!r) return;
+  document.getElementById('edit-id').value = r.id;
+  document.getElementById('form-title').textContent = 'Editar registro';
+  document.getElementById('f-ml').value = r.ml;
+  document.getElementById('f-date').value = r.date;
+  document.getElementById('f-time').value = r.time;
+  document.getElementById('f-period').value = r.period;
+  document.getElementById('f-local').value = r.local;
+  document.getElementById('f-obs').value = r.obs || '';
+  document.querySelectorAll('.sugar-option').forEach(o => o.classList.toggle('selected', o.dataset.val === r.sugar));
+  switchTab('add', document.querySelectorAll('.nav-tab')[2]);
+}
+
+function deleteRecord(id) {
+  deleteTarget = id;
+  document.getElementById('delete-modal').classList.add('active');
+}
+function closeModal() { document.getElementById('delete-modal').classList.remove('active'); deleteTarget = null; }
+function confirmDelete() {
+  if (!deleteTarget) return;
+  const records = getRecords().filter(r => r.id !== deleteTarget);
+  saveRecords(records);
+  closeModal();
+  renderAllRecords();
+  initDashboard();
+  showToast('🗑️ Registro excluído.');
+}
+
+// ============================================================
+//  RENDER HELPERS
+// ============================================================
+function sugarLabel(v) {
+  if (v === 'com') return '<span class="record-sugar sugar-yes">Com açúcar</span>';
+  if (v === 'adocante') return '<span class="record-sugar sugar-sweetener">Adoçante</span>';
+  return '<span class="record-sugar sugar-none">Sem açúcar</span>';
+}
+function periodLabel(v) {
+  const map = { manha: ['☀️ Manhã','manha'], tarde: ['🌤️ Tarde','tarde'], noite: ['🌙 Noite','noite'] };
+  const [label, cls] = map[v] || ['—',''];
+  return `<span class="period-badge period-${cls}">${label}</span>`;
+}
+function formatDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+function renderRecord(r) {
+  return `
+  <div class="record-item" id="rec-${r.id}">
+    <div class="record-cup">☕</div>
+    <div class="record-info">
+      <div class="record-ml">${r.ml} ml ${sugarLabel(r.sugar)}</div>
+      <div class="record-meta">
+        📅 ${formatDate(r.date)} · ${r.time || ''} · 📍 ${r.local}
+        &nbsp;${periodLabel(r.period)}
+        ${r.obs ? `<br><span style="font-style:italic;opacity:.7">${r.obs}</span>` : ''}
+      </div>
+    </div>
+    <div class="record-actions">
+      <button class="btn-icon" onclick="editRecord('${r.id}')" title="Editar">✏️</button>
+      <button class="btn-icon delete" onclick="deleteRecord('${r.id}')" title="Excluir">🗑️</button>
+    </div>
+  </div>`;
+}
+
+function renderAllRecords() {
+  const records = getRecords().slice().sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
+  const el = document.getElementById('all-records-list');
+  if (!records.length) { el.innerHTML = emptyState(); return; }
+  el.innerHTML = records.map(renderRecord).join('');
+}
+
+function emptyState() {
+  return `<div class="empty-state"><div class="empty-icon">☕</div><div class="empty-text">Nenhum registro encontrado</div></div>`;
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function initDashboard() {
+  const now = new Date();
+  const h = now.getHours();
+  const greet = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('dash-greeting').textContent = `${greet}, ${currentUser} ☕`;
+  document.getElementById('dash-date').textContent = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  const records = getRecords();
+  const todayStr = now.toISOString().slice(0,10);
+  const todayRecs = records.filter(r => r.date === todayStr);
+  const todayMl = todayRecs.reduce((s,r) => s+r.ml, 0);
+  const totalMl = records.reduce((s,r) => s+r.ml, 0);
+  const avgMl = records.length ? Math.round(totalMl / new Set(records.map(r=>r.date)).size) : 0;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-icon">☕</div><div class="stat-value">${todayMl}</div><div class="stat-label">ml hoje</div></div>
+    <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${records.length}</div><div class="stat-label">registros</div></div>
+    <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value">${avgMl}</div><div class="stat-label">ml médio/dia</div></div>
+    <div class="stat-card"><div class="stat-icon">🗓️</div><div class="stat-value">${todayRecs.length}</div><div class="stat-label">doses hoje</div></div>
+  `;
+
+  // Weekly chart
+  const days = [];
+  for (let i=6; i>=0; i--) {
+    const d = new Date(now); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().slice(0,10);
+    const ml = records.filter(r=>r.date===ds).reduce((s,r)=>s+r.ml,0);
+    days.push({ label: d.toLocaleDateString('pt-BR',{weekday:'short'}).slice(0,3), ml });
+  }
+  const maxMl = Math.max(...days.map(d=>d.ml), 1);
+  document.getElementById('week-chart').innerHTML = days.map(d => `
+    <div class="bar-col">
+      <div class="bar" style="height:${Math.max(2, Math.round((d.ml/maxMl)*70))}px" title="${d.ml} ml"></div>
+      <div class="bar-label">${d.label}</div>
+    </div>
+  `).join('');
+
+  // Recent 5
+  const sorted = records.slice().sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||'')).slice(0,5);
+  const el = document.getElementById('recent-list');
+  if (!sorted.length) { el.innerHTML = emptyState(); return; }
+  el.innerHTML = sorted.map(renderRecord).join('');
+}
+
+// ============================================================
+//  FILTERS
+// ============================================================
+function toggleChip(el, group) {
+  document.querySelectorAll(`.filter-chip[data-filter="${group}"]`).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  filters[group] = el.dataset.val;
+}
+
+function populateLocalChips() {
+  if (!currentUser) return;
+  const records = getRecords();
+  const locals = [...new Set(records.map(r => r.local).filter(Boolean))];
+  const cont = document.getElementById('local-chips');
+  cont.innerHTML = `<div class="filter-chip active" data-filter="local" data-val="todos" onclick="toggleChip(this,'local')">Todos</div>`;
+  locals.forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'filter-chip'; d.dataset.filter = 'local'; d.dataset.val = l;
+    d.textContent = l; d.onclick = function() { toggleChip(this,'local'); };
+    cont.appendChild(d);
+  });
+}
+
+function applyFilters() {
+  let records = getRecords();
+  const from = document.getElementById('fil-from').value;
+  const to   = document.getElementById('fil-to').value;
+
+  if (from) records = records.filter(r => r.date >= from);
+  if (to)   records = records.filter(r => r.date <= to);
+  if (filters.sugar !== 'todos')  records = records.filter(r => r.sugar === filters.sugar);
+  if (filters.period !== 'todos') records = records.filter(r => r.period === filters.period);
+  if (filters.local !== 'todos')  records = records.filter(r => r.local === filters.local);
+
+  records.sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
+  const totalMl = records.reduce((s,r) => s+r.ml, 0);
+  document.getElementById('filter-count').textContent = `${records.length} registro(s) · ${totalMl} ml total`;
+  const el = document.getElementById('filter-results');
+  if (!records.length) { el.innerHTML = emptyState(); return; }
+  el.innerHTML = records.map(renderRecord).join('');
+}
+
+function clearFilters() {
+  document.getElementById('fil-from').value = '';
+  document.getElementById('fil-to').value = '';
+  filters.sugar = 'todos'; filters.period = 'todos'; filters.local = 'todos';
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.val === 'todos');
+  });
+  document.getElementById('filter-results').innerHTML = '';
+  document.getElementById('filter-count').textContent = '';
+}
+
+// ============================================================
+//  REPORT
+// ============================================================
+function setDefaultDates() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const first = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
+  const last  = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(new Date(now.getFullYear(),now.getMonth()+1,0).getDate())}`;
+  const f = document.getElementById('rep-from'); if (f) f.value = first;
+  const t = document.getElementById('rep-to');   if (t) t.value = last;
+}
+
+function generateReport() {
+  const from = document.getElementById('rep-from').value;
+  const to   = document.getElementById('rep-to').value;
+  let records = getRecords();
+  if (from) records = records.filter(r => r.date >= from);
+  if (to)   records = records.filter(r => r.date <= to);
+
+  const el = document.getElementById('report-output');
+  if (!records.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Nenhum dado no período</div></div>`; return; }
+
+  const totalMl = records.reduce((s,r) => s+r.ml, 0);
+  const avg = Math.round(totalMl / Math.max(1, new Set(records.map(r=>r.date)).size));
+  const maxRec = records.reduce((a,b) => a.ml>b.ml ? a : b);
+
+  // Most frequent local
+  const localCount = {};
+  records.forEach(r => localCount[r.local] = (localCount[r.local]||0)+1);
+  const topLocal = Object.entries(localCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // Most frequent period
+  const periodCount = {};
+  records.forEach(r => periodCount[r.period] = (periodCount[r.period]||0)+1);
+  const topPeriod = Object.entries(periodCount).sort((a,b)=>b[1]-a[1])[0];
+  const periodNames = { manha:'Manhã', tarde:'Tarde', noite:'Noite' };
+
+  // Most frequent day of month
+  const dayCount = {};
+  records.forEach(r => { const d = r.date.slice(8); dayCount[d] = (dayCount[d]||0)+1; });
+  const topDay = Object.entries(dayCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // Sugar breakdown
+  const sugarCount = {};
+  records.forEach(r => sugarCount[r.sugar] = (sugarCount[r.sugar]||0)+1);
+
+  // Bar chart by period
+  const pLabels = { manha:'☀️ Manhã', tarde:'🌤️ Tarde', noite:'🌙 Noite' };
+  const pMl = {};
+  records.forEach(r => pMl[r.period] = (pMl[r.period]||0)+r.ml);
+  const maxPMl = Math.max(...Object.values(pMl), 1);
+  const periodBars = Object.entries(pMl).map(([k,v]) => `
+    <div class="bar-col">
+      <div class="bar" style="height:${Math.max(2,Math.round((v/maxPMl)*70))}px" title="${v} ml"></div>
+      <div class="bar-label">${pLabels[k]||k}</div>
+    </div>`).join('');
+
+  // Donut-like sugar breakdown
+  const sugarColors = { sem:'#4a9a6a', com:'#c8832a', adocante:'#6a7ad0' };
+  const sugarNames = { sem:'Sem açúcar', com:'Com açúcar', adocante:'Adoçante' };
+  const legendItems = Object.entries(sugarCount).map(([k,v]) => `
+    <div class="legend-item"><div class="legend-dot" style="background:${sugarColors[k]||'#888'}"></div>${sugarNames[k]}: <b>${v}</b></div>`).join('');
+
+  const totalPct = records.length;
+  const svgParts = [];
+  let angle = 0;
+  Object.entries(sugarCount).forEach(([k,v]) => {
+    const pct = v/totalPct;
+    const startAngle = angle * Math.PI * 2 / totalPct * totalPct;
+    const endAngle = startAngle + pct * 2 * Math.PI;
+    const x1 = 40 + 35 * Math.cos(startAngle - Math.PI/2);
+    const y1 = 40 + 35 * Math.sin(startAngle - Math.PI/2);
+    const x2 = 40 + 35 * Math.cos(endAngle - Math.PI/2);
+    const y2 = 40 + 35 * Math.sin(endAngle - Math.PI/2);
+    const largeArc = pct > 0.5 ? 1 : 0;
+    svgParts.push(`<path d="M40,40 L${x1},${y1} A35,35 0 ${largeArc},1 ${x2},${y2} Z" fill="${sugarColors[k]||'#888'}" opacity="0.85"/>`);
+    angle += v;
+  });
+
+  el.innerHTML = `
+  <div class="report-section">
+    <div class="report-block">
+      <div class="report-block-title">Resumo geral — ${from ? formatDate(from) : '?'} a ${to ? formatDate(to) : '?'}</div>
+      <div class="insight-row"><span class="insight-key">Total consumido</span><span class="insight-val highlight">${totalMl} ml</span></div>
+      <div class="insight-row"><span class="insight-key">Número de registros</span><span class="insight-val">${records.length}</span></div>
+      <div class="insight-row"><span class="insight-key">Média diária</span><span class="insight-val">${avg} ml/dia</span></div>
+      <div class="insight-row"><span class="insight-key">Maior dose registrada</span><span class="insight-val">${maxRec.ml} ml (${formatDate(maxRec.date)})</span></div>
+    </div>
+
+    <div class="report-block">
+      <div class="report-block-title">Padrões de consumo</div>
+      <div class="insight-row"><span class="insight-key">Local de maior consumo</span><span class="insight-val">${topLocal ? `📍 ${topLocal[0]} (${topLocal[1]}×)` : '—'}</span></div>
+      <div class="insight-row"><span class="insight-key">Período de maior consumo</span><span class="insight-val">${topPeriod ? `${pLabels[topPeriod[0]]||topPeriod[0]} (${topPeriod[1]}×)` : '—'}</span></div>
+      <div class="insight-row"><span class="insight-key">Dia do mês com mais consumo</span><span class="insight-val">${topDay ? `Dia ${topDay[0]} (${topDay[1]}×)` : '—'}</span></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="report-block">
+        <div class="report-block-title">Por período do dia (ml)</div>
+        <div class="bar-chart" style="height:80px">${periodBars}</div>
+      </div>
+      <div class="report-block">
+        <div class="report-block-title">Distribuição por tipo</div>
+        <div class="donut-chart-wrap">
+          <svg viewBox="0 0 80 80" width="80" height="80">${svgParts.join('')}</svg>
+          <div class="donut-legend">${legendItems}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="print-btn-row">
+    <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    <button class="btn btn-ghost" onclick="exportCSV(${JSON.stringify(from)}, ${JSON.stringify(to)})">📥 Exportar CSV</button>
+  </div>`;
+}
+
+function exportCSV(from, to) {
+  let records = getRecords();
+  if (from) records = records.filter(r => r.date >= from);
+  if (to)   records = records.filter(r => r.date <= to);
+  const header = 'Data,Hora,Período,ML,Açúcar,Local,Observação';
+  const periodNames = { manha:'Manhã', tarde:'Tarde', noite:'Noite' };
+  const sugarNames  = { sem:'Sem açúcar', com:'Com açúcar', adocante:'Adoçante' };
+  const rows = records.map(r =>
+    [formatDate(r.date), r.time, periodNames[r.period]||r.period, r.ml, sugarNames[r.sugar]||r.sugar, `"${r.local}"`, `"${r.obs||''}"`].join(',')
+  );
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cafe-diario-${currentUser}-${from||'inicio'}_${to||'fim'}.csv`;
+  a.click();
+  showToast('📥 CSV exportado!');
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+let toastTimer;
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  clearTimeout(toastTimer);
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  toastTimer = setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, 2800);
+}
+</script>
+</body>
+</html>
